@@ -10,7 +10,7 @@ set -e
 DB_HOST="10.5.191.47"
 DB_USER="veza"
 DB_NAME="veza_db"
-DB_PASSWORD="N3W3Dm0Ura@#fn5J%4UQKu%vSXWCNbCvj8Ne0FIUs#KG1T&Ouy2lJt$T!#"
+DB_PASSWORD='N3W3Dm0Ura@#fn5J%4UQKu%vSXWCNbCvj8Ne0FIUs#KG1T&Ouy2lJt$T!#'
 
 # Couleurs
 GREEN='\033[0;32m'

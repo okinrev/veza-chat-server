@@ -1,378 +1,111 @@
-# 🚀 Veza Chat Server
+# Veza Chat Server
 
-> Serveur de chat WebSocket haute performance en Rust avec sécurité renforcée et fonctionnalités avancées
+Serveur de chat WebSocket haute performance écrit en Rust avec fonctionnalités avancées.
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![WebSocket](https://img.shields.io/badge/websocket-RFC%206455-blue.svg)](https://tools.ietf.org/html/rfc6455)
-[![PostgreSQL](https://img.shields.io/badge/database-postgresql-336791.svg)](https://www.postgresql.org)
-[![Redis](https://img.shields.io/badge/cache-redis-d82c20.svg)](https://redis.io)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
+## 🚀 Fonctionnalités
 
-## 🎯 Corrections et Améliorations Apportées
+### Communication en temps réel
+- **Salons de chat** - Salons publics et privés avec gestion des membres
+- **Messages directs** - Conversations privées entre utilisateurs
+- **WebSocket** - Communication en temps réel bidirectionnelle
 
-### ❌ **Problèmes Identifiés et Corrigés**
+### Fonctionnalités avancées
+- **Système de réactions** - Réactions emoji sur tous les messages
+- **Messages épinglés** - Épinglage dans les salons et conversations DM
+- **Threads de discussion** - Réponses et discussions organisées
+- **Mentions utilisateur** - Système de mentions @username
+- **Édition de messages** - Modification des messages avec historique
 
-1. **Base de données incohérente** : Tables dupliquées (`*_enhanced`, `*_secure`)
-2. **Sécurité insuffisante** : JWT basique, pas de 2FA, filtrage limité
-3. **Architecture monolithique** : Code concentré dans `main.rs`
-4. **Séparation DM/Rooms floue** : Pas de distinction claire
-5. **Fonctionnalités manquantes** : Pas de reactions, historique, messages épinglés
-6. **Configuration dispersée** : Variables d'env sans validation
-7. **Gestion d'erreurs basique** : Pas de catégorisation ni de codes HTTP
-8. **Pas de production-ready** : Pas de monitoring, logging minimal
+### Sécurité et modération
+- **Authentification JWT** - Tokens sécurisés avec refresh
+- **Rate limiting** - Protection contre le spam
+- **Audit complet** - Logs de toutes les actions
+- **Modération intégrée** - Blocage, sanctions, signalements
+- **Filtrage de contenu** - Protection contre le contenu inapproprié
 
-### ✅ **Solutions Implémentées**
+### Administration
+- **Statistiques temps réel** - Métriques de performance
+- **Gestion des permissions** - Système de rôles flexible
+- **Monitoring** - Surveillance et alertes
+- **Cache Redis** - Performance optimisée (optionnel)
 
-#### 🗄️ **Base de Données Unifiée**
-- **Structure propre** avec tables unifiées (plus de doublons)
-- **Conversations unifiées** : DM et Rooms dans la même table avec types
-- **Contraintes métier** robustes avec `CHECK` et types `ENUM`
-- **Index optimisés** pour performance
-- **Row Level Security** activée
-- **Triggers automatiques** pour mentions et statistiques
+## 🏗️ Architecture
 
-#### 🔐 **Sécurité Renforcée**
-- **JWT sécurisé** avec refresh tokens et validation complète
-- **2FA (TOTP)** avec QR codes et codes de backup
-- **Hachage Argon2/bcrypt** pour mots de passe
-- **Filtrage de contenu** avancé (XSS, injection, spam)
-- **Rate limiting** adaptatif par action
-- **Audit trail** complet de toutes les actions
-- **Détection d'activité suspecte**
-
-#### 🏗️ **Architecture Modulaire**
-- **Structure library** avec modules séparés
-- **Configuration centralisée** avec validation
-- **Gestion d'erreurs** typée avec codes HTTP
-- **Services découplés** (auth, cache, websocket, etc.)
-- **Tests intégrés** avec mocking
-
-#### 💬 **Fonctionnalités Avancées**
-- **Messages épinglés** avec permissions
-- **Réactions emoji** avec statistiques
-- **Fils de discussion** (threads) complets
-- **Historique paginé** avec recherche
-- **Upload de fichiers** sécurisé avec scan antivirus
-- **Mentions @utilisateur** automatiques
-
-#### ⚡ **Production Ready**
-- **Monitoring Prometheus** avec métriques détaillées
-- **Logging structuré** (JSON) avec niveaux
-- **Health checks** pour Kubernetes
-- **Shutdown gracieux** avec timeout
-- **Configuration multi-env** (dev/staging/prod)
-- **Docker/K8s ready**
-
-## ✨ Fonctionnalités Principales
-
-### 🔐 **Sécurité Avancée**
-- Authentification JWT avec refresh tokens
-- Support 2FA (TOTP) avec QR codes
-- Hachage de mots de passe avec Argon2/bcrypt
-- Filtrage de contenu et détection de spam
-- Rate limiting adaptatif
-- Audit trail complet
-- Row Level Security (RLS) PostgreSQL
-- Protection XSS/injection
-
-### 💬 **Messagerie Unifiée**
-- **Messages directs (DM)** et **salons publics/privés**
-- Fils de discussion (threads)
-- Messages épinglés
-- Réactions emoji
-- Mentions @utilisateur
-- Historique complet avec pagination
-- Support des fichiers et médias
-
-### ⚡ **Performance**
-- Architecture asynchrone (Tokio)
-- Pool de connexions optimisé
-- Cache Redis intégré
-- Compression WebSocket
-- Metrics Prometheus
-- Monitoring en temps réel
-
-## 🚀 Installation Rapide
-
-### 1. Prérequis
-
-```bash
-# Rust 1.70+
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# PostgreSQL 15+
-sudo apt install postgresql-15 postgresql-contrib
-
-# Redis (optionnel mais recommandé)
-sudo apt install redis-server
-
-# SQLx CLI pour migrations
-cargo install sqlx-cli --no-default-features --features postgres
+```
+src/
+├── hub/                    # Hub central de chat
+│   ├── common.rs          # Structures communes
+│   ├── channels.rs        # Gestion des salons
+│   ├── direct_messages.rs # Messages directs
+│   ├── reactions.rs       # Système de réactions
+│   ├── audit.rs          # Audit et logs
+│   ├── channel_websocket.rs      # WebSocket salons
+│   └── direct_messages_websocket.rs # WebSocket DM
+├── auth.rs               # Authentification
+├── cache.rs              # Système de cache
+├── config.rs             # Configuration
+├── error.rs              # Gestion d'erreurs
+├── security.rs           # Sécurité et validation
+├── moderation.rs         # Système de modération
+└── ...
 ```
 
-### 2. Configuration
+## 🛠️ Installation
 
+### Prérequis
+- **Rust** 1.70+
+- **PostgreSQL** 14+
+- **Redis** 6+ (optionnel, pour le cache)
+
+### Configuration
+
+1. **Variables d'environnement**
 ```bash
-# Cloner et configurer
-git clone https://github.com/veza/chat-server.git
-cd chat-server
 cp .env.example .env
+# Éditer .env avec vos paramètres
 ```
 
-Exemple `.env`:
+2. **Base de données**
 ```bash
-CHAT_SERVER__DATABASE__URL=postgresql://postgres:password@localhost:5432/veza_chat
-CHAT_SERVER__SECURITY__JWT_SECRET=your-super-secret-jwt-key-minimum-32-chars
-CHAT_SERVER__CACHE__URL=redis://localhost:6379
-CHAT_SERVER__SERVER__BIND_ADDR=127.0.0.1:8080
-```
-
-### 3. Base de données
-
-```bash
-# Créer la base avec nouvelle structure unifiée
+# Créer la base de données
 createdb veza_chat
-sqlx migrate run
+
+# Exécuter les migrations
+./scripts/database/run_migration.sh
 ```
 
-### 4. Démarrage
+### Compilation
 
 ```bash
 # Mode développement
 cargo run
 
 # Mode production
-cargo build --release && ./target/release/chat-server
+cargo build --release
+./target/release/chat-server
 ```
 
-## 📡 API WebSocket Améliorée
+## 📊 Configuration
 
-### Connexion Sécurisée
-
-```javascript
-const ws = new WebSocket('ws://localhost:8080', {
-  headers: {
-    'Authorization': 'Bearer your-jwt-token'
-  }
-});
-```
-
-### Messages avec Nouvelles Fonctionnalités
-
-#### Envoyer un message avec thread
-```json
-{
-  "type": "send_message",
-  "data": {
-    "conversation_id": "room_123",
-    "content": "Réponse dans le thread! 💬",
-    "parent_message_id": 456,
-    "message_type": "text"
-  }
-}
-```
-
-#### Épingler un message
-```json
-{
-  "type": "pin_message",
-  "data": {
-    "message_id": 789,
-    "pinned": true
-  }
-}
-```
-
-#### Ajouter une réaction
-```json
-{
-  "type": "add_reaction",
-  "data": {
-    "message_id": 789,
-    "emoji": "🚀"
-  }
-}
-```
-
-#### Rechercher dans l'historique
-```json
-{
-  "type": "search_messages",
-  "data": {
-    "conversation_id": "room_123",
-    "query": "rust performance",
-    "limit": 50,
-    "before": "2024-01-15T10:00:00Z"
-  }
-}
-```
-
-## 🔧 Configuration Avancée
-
-### Fichier de Configuration Production
-
-Créer `config/production.toml`:
+Le serveur utilise un fichier de configuration TOML flexible :
 
 ```toml
 [server]
-bind_addr = "0.0.0.0:8080"
-environment = "production"
-workers = 0  # auto-détection
-connection_timeout = "30s"
-heartbeat_interval = "30s"
+bind_addr = "127.0.0.1:8080"
+environment = "development"
 
 [database]
-url = "postgresql://user:pass@db:5432/veza_chat"
-max_connections = 20
-auto_migrate = true
+url = "postgresql://user:pass@localhost/veza_chat"
+max_connections = 10
 
 [security]
-jwt_secret = "production-secret-key-change-this"
+jwt_secret = "your-secret-key"
 jwt_access_duration = "15m"
-jwt_refresh_duration = "7d"
-enable_2fa = true
-content_filtering = true
-bcrypt_cost = 12
 
 [limits]
-max_message_length = 4000
+max_message_length = 2000
 max_connections_per_user = 5
-max_messages_per_minute = 60
-max_file_size = 104857600  # 100MB
-
-[features]
-file_uploads = true
-message_reactions = true
-user_mentions = true
-pinned_messages = true
-message_threads = true
-webhooks = true
-
-[logging]
-level = "info"
-format = "json"
-file = "/var/log/chat-server/app.log"
 ```
-
-## 🔍 Monitoring et Observabilité
-
-### Métriques Prometheus
-
-Le serveur expose des métriques sur `/metrics`:
-
-- `chat_server_active_connections` - Connexions actives
-- `chat_server_messages_total` - Total des messages
-- `chat_server_auth_attempts_total` - Tentatives d'authentification
-- `chat_server_errors_total` - Erreurs par type
-- `chat_server_request_duration_seconds` - Latence des requêtes
-
-### Health Checks
-
-- `GET /health` - Status général
-- `GET /health/ready` - Readiness probe (K8s)
-- `GET /health/live` - Liveness probe (K8s)
-
-## 📦 Déploiement Docker
-
-### Dockerfile Optimisé
-
-```dockerfile
-FROM rust:1.70 as builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release
-
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/chat-server /usr/local/bin/
-EXPOSE 8080
-CMD ["chat-server"]
-```
-
-### Docker Compose Complet
-
-```yaml
-version: '3.8'
-services:
-  chat-server:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      CHAT_SERVER__DATABASE__URL: postgresql://postgres:password@db:5432/veza_chat
-      CHAT_SERVER__CACHE__URL: redis://redis:6379
-    depends_on:
-      - db
-      - redis
-      
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: veza_chat
-      POSTGRES_PASSWORD: password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      
-  redis:
-    image: redis:7-alpine
-    
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      
-volumes:
-  postgres_data:
-```
-
-## 🔒 Sécurité
-
-### Nouvelles Fonctionnalités de Sécurité
-
-1. **Authentification 2FA**
-```bash
-# Activer 2FA pour un utilisateur
-curl -X POST http://localhost:8080/auth/2fa/enable \
-  -H "Authorization: Bearer your-token"
-```
-
-2. **Audit Trail**
-```sql
--- Voir les actions d'un utilisateur
-SELECT * FROM audit_logs 
-WHERE user_id = 123 
-ORDER BY created_at DESC 
-LIMIT 100;
-```
-
-3. **Détection d'Activité Suspecte**
-```sql
--- Événements de sécurité critiques
-SELECT * FROM security_events 
-WHERE severity = 'critical' 
-AND created_at > NOW() - INTERVAL '24 hours';
-```
-
-## 📈 Performances
-
-### Benchmarks
-
-| Métrique | Ancienne Version | Nouvelle Version | Amélioration |
-|----------|------------------|------------------|--------------|
-| Connexions simultanées | ~1,000 | 10,000+ | **10x** |
-| Messages/seconde | ~5,000 | 50,000+ | **10x** |
-| Latence P99 | ~50ms | <10ms | **5x** |
-| Mémoire par connexion | ~32KB | ~8KB | **4x** |
-
-### Optimisations Appliquées
-
-- ✅ Pool de connexions optimisé
-- ✅ Cache Redis intelligent
-- ✅ Sérialisation binaire (MessagePack)
-- ✅ Index de base de données optimisés
-- ✅ Architecture zero-copy quand possible
 
 ## 🧪 Tests
 
@@ -380,51 +113,97 @@ AND created_at > NOW() - INTERVAL '24 hours';
 # Tests unitaires
 cargo test
 
-# Tests d'intégration avec base de données
-cargo test --features test-db
-
-# Tests de performance
-cargo bench
-
-# Couverture de code
-cargo tarpaulin --out html
+# Tests d'intégration
+./scripts/testing/test_dm_enrichis.sh
+./scripts/testing/test_salons_enrichis.sh
 ```
 
-## 🚧 Migration depuis l'Ancienne Version
-
-### Script de Migration
+## 🚀 Déploiement
 
 ```bash
-# 1. Sauvegarder l'ancienne base
-pg_dump veza_chat_old > backup.sql
+# Déploiement automatique
+./scripts/deploy.sh
 
-# 2. Appliquer la nouvelle structure
-sqlx migrate run
-
-# 3. Migrer les données (script fourni)
-./scripts/migrate_data.sh backup.sql
+# Ou manuel
+cargo build --release
+./target/release/chat-server --config production.toml
 ```
 
-### Points d'Attention
+## 📡 API WebSocket
 
-- **⚠️ Breaking Changes** : L'API WebSocket a changé
-- **🔄 Data Migration** : Script automatique fourni
-- **🔧 Configuration** : Nouveau format TOML
-- **📦 Dépendances** : Nouvelles dépendances à installer
+### Connexion
+```javascript
+const ws = new WebSocket('ws://localhost:8080/ws');
+```
 
-## 📞 Support
+### Messages salon
+```json
+{
+  "type": "join_room",
+  "data": { "room_id": 123 }
+}
 
-- **Issues** : [GitHub Issues](https://github.com/veza/chat-server/issues)
-- **Documentation** : [docs.rs](https://docs.rs/chat_server)
-- **Discord** : [Serveur de Support](https://discord.gg/veza-chat)
-- **Email** : [support@veza-chat.com](mailto:support@veza-chat.com)
+{
+  "type": "send_message",
+  "data": {
+    "room_id": 123,
+    "content": "Hello world!",
+    "parent_id": null
+  }
+}
+```
+
+### Messages directs
+```json
+{
+  "type": "create_dm",
+  "data": { "user1_id": 1, "user2_id": 2 }
+}
+
+{
+  "type": "send_dm",
+  "data": {
+    "conversation_id": 456,
+    "content": "Message privé"
+  }
+}
+```
+
+## 🛡️ Sécurité
+
+- **HTTPS/WSS** en production
+- **Validation stricte** des entrées
+- **Rate limiting** par utilisateur
+- **Audit logs** complets
+- **Filtrage de contenu** automatique
+- **Sessions sécurisées** avec timeout
+
+## 📈 Performance
+
+- **Architecture async** avec Tokio
+- **Pool de connexions** PostgreSQL optimisé
+- **Cache Redis** pour les données fréquentes
+- **Compression WebSocket** (optionnelle)
+- **Metrics Prometheus** intégrées
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/nouvelle-fonctionnalite`)
+3. Commit (`git commit -m 'Ajout nouvelle fonctionnalité'`)
+4. Push (`git push origin feature/nouvelle-fonctionnalite`)
+5. Ouvrir une Pull Request
 
 ## 📄 Licence
 
-Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+MIT License - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## 🔗 Liens utiles
+
+- **Documentation API** : `/docs` (en développement)
+- **Monitoring** : `/metrics` (Prometheus)
+- **Health Check** : `/health`
 
 ---
 
-**🎉 Version 0.2.0 - Complètement refactorisée pour la production**
-
-*Développée avec ❤️ et beaucoup de ☕ par l'équipe Veza* 
+Développé avec ❤️ par l'équipe Veza 

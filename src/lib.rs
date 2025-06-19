@@ -27,6 +27,10 @@
 //!                        └──────────────────┘
 //! ```
 
+// ================================================================
+// MODULES CORE
+// ================================================================
+
 pub mod auth;
 pub mod cache;
 pub mod client;
@@ -34,9 +38,7 @@ pub mod config;
 pub mod error;
 pub mod hub;
 pub mod message_handler;
-// TODO: Réactiver après migration DB
-// pub mod message_store;
-// pub mod message_store_simple;
+pub mod message_store;
 pub mod messages;
 pub mod models;
 pub mod moderation;
@@ -44,23 +46,21 @@ pub mod monitoring;
 pub mod permissions;
 pub mod presence;
 pub mod rate_limiter;
-pub mod reactions;
 pub mod security;
-pub mod security_enhanced;
 pub mod services;
 pub mod utils;
 pub mod validation;
 pub mod websocket;
 
-// Re-exports publics
+// ================================================================
+// RÉEXPORTS PUBLICS
+// ================================================================
+
 pub use auth::Claims;
-// pub use auth::TokenData; // Private dans auth.rs
 pub use config::ServerConfig;
 pub use error::{ChatError, Result};
+pub use hub::{ChatHub, HubStats};
 pub use models::*;
-// TODO: Réactiver après implémentation complète
-// pub use services::ChatService;
-// pub use websocket::{WebSocketHandler, WebSocketMessage};
 
 /// Version du serveur
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -87,10 +87,12 @@ pub fn welcome_message() -> String {
 
 /// Initialise et lance le serveur de chat
 pub async fn initialize_server() -> Result<()> {
-    // TODO: Implémenter ChatService
+    tracing::info!("🚀 Initialisation du serveur Veza Chat v{}", VERSION);
+    
+    // TODO: Implémenter l'initialisation complète
     // let config = ServerConfig::from_env()?;
-    // let service = ChatService::new(config).await?;
-    // Ok(service)
+    // let hub = ChatHub::new(db_pool, config).await?;
+    
     Ok(())
 }
 
