@@ -2,22 +2,223 @@
 
 [package]
 name = "chat_server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+authors = ["Veza Team <dev@veza-chat.com>"]
+description = "Serveur de chat WebSocket sécurisé et haute performance"
+repository = "https://github.com/veza/chat-server"
+license = "MIT"
+keywords = ["websocket", "chat", "real-time", "rust", "tokio"]
+categories = ["network-programming", "web-programming::websocket"]
+readme = "README.md"
+
+[lib]
+name = "chat_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "chat-server"
+path = "src/main.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.20"
-tungstenite = "0.20"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-jsonwebtoken = "9"
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "chrono"] }
-dotenvy = "0.15"
+# ═══════════════════════════════════════════════════════════════════════
+# RUNTIME ASYNCHRONE ET RÉSEAU
+# ═══════════════════════════════════════════════════════════════════════
+tokio = { version = "1.35", features = [
+    "full",           # Toutes les fonctionnalités
+    "tracing",       # Support tracing
+    "signal",        # Signaux système pour shutdown gracieux
+] }
+tokio-tungstenite = "0.21"      # WebSocket server/client
+tungstenite = "0.21"            # Core WebSocket
+futures-util = "0.3"            # Utilitaires futures
+hyper = { version = "1.0", features = ["full"] }  # Client HTTP pour webhooks
+
+# ═══════════════════════════════════════════════════════════════════════
+# BASE DE DONNÉES ET CACHE
+# ═══════════════════════════════════════════════════════════════════════
+sqlx = { version = "0.7", features = [
+    "postgres",           # Support PostgreSQL
+    "runtime-tokio-native-tls",  # Runtime async avec TLS natif
+    "chrono",            # Support des types de date
+    "uuid",              # Support UUID
+    "json",              # Support JSON/JSONB
+    "migrate",           # Migrations de base de données
+    "macros",            # Macros query!
+] }
+redis = { version = "0.24", features = [
+    "tokio-comp",        # Support Tokio
+    "connection-manager", # Gestionnaire de connexions
+], optional = true }
+
+# ═══════════════════════════════════════════════════════════════════════
+# SÉRIALISATION ET FORMATS
+# ═══════════════════════════════════════════════════════════════════════
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"                    # Configuration TOML
+rmp-serde = "1.1"               # MessagePack pour cache efficace
+
+# ═══════════════════════════════════════════════════════════════════════
+# AUTHENTIFICATION ET SÉCURITÉ  
+# ═══════════════════════════════════════════════════════════════════════
+jsonwebtoken = "9.2"            # JWT tokens
+bcrypt = "0.15"                 # Hachage de mots de passe
+ring = "0.17"                   # Cryptographie (signatures, HMAC)
+argon2 = "0.5"                  # Hachage de mots de passe moderne (alternative à bcrypt)
+totp-rs = { version = "5.4", features = ["qr"] } # TOTP 2FA
+qrcode = "0.14"                 # Génération QR codes pour 2FA
+
+# ═══════════════════════════════════════════════════════════════════════
+# TYPES ET UTILITAIRES
+# ═══════════════════════════════════════════════════════════════════════
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1", features = ["v4"] }
-futures-util = "0.3"
-http = "0.2"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "ansi"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+url = { version = "2.5", features = ["serde"] }                     # Parsing d'URLs
+percent-encoding = "2.3"        # Encodage URL
+base64 = "0.21"                 # Encodage base64
+hex = "0.4"                     # Encodage hexadécimal
+
+# ═══════════════════════════════════════════════════════════════════════
+# VALIDATION ET NETTOYAGE
+# ═══════════════════════════════════════════════════════════════════════
+regex = "1.10"                  # Expressions régulières
+validator = { version = "0.16", features = ["derive"] } # Validation des données
+ammonia = "3.3"                 # Nettoyage HTML/XSS
+linkify = "0.10"                # Détection automatique de liens
+
+# ═══════════════════════════════════════════════════════════════════════
+# GESTION D'ERREURS ET LOGGING
+# ═══════════════════════════════════════════════════════════════════════
+thiserror = "1.0"               # Macros d'erreurs
+anyhow = "1.0"                  # Gestion d'erreurs contextuelles
+tracing = "0.1"                 # Logging structuré
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",       # Filtrage par variables d'env
+    "fmt",             # Formatage console
+    "json",            # Format JSON pour production
+    "ansi",            # Couleurs ANSI
+    "chrono",          # Timestamps
+] }
+tracing-appender = "0.2"        # Rotation des logs
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONFIGURATION ET ENVIRONNEMENT
+# ═══════════════════════════════════════════════════════════════════════
+dotenvy = "0.15"                # Variables d'environnement (.env)
+config = "0.14"                 # Configuration multi-sources
+clap = { version = "4.4", features = ["derive", "env"] } # CLI arguments
+
+# ═══════════════════════════════════════════════════════════════════════
+# PERFORMANCE ET MONITORING
+# ═══════════════════════════════════════════════════════════════════════
+metrics = { version = "0.22", optional = true }                # Métriques de performance
+metrics-exporter-prometheus = { version = "0.13", optional = true }  # Export Prometheus
+dashmap = "5.5"                 # HashMap concurrent
+parking_lot = "0.12"            # Mutex plus performants
+once_cell = "1.19"              # Initialisation paresseuse thread-safe
+
+# ═══════════════════════════════════════════════════════════════════════
+# FONCTIONNALITÉS AVANCÉES
+# ═══════════════════════════════════════════════════════════════════════
+notify = "6.1"                  # Surveillance système de fichiers
+image = { version = "0.24", features = ["png", "jpeg", "webp"], optional = true } # Traitement d'images
+infer = { version = "0.15", optional = true }                  # Détection de type de fichier
+mime = "0.3"                    # Types MIME
+tempfile = { version = "3.8", optional = true }                # Fichiers temporaires
+zip = { version = "0.6", optional = true }                     # Archives ZIP
+
+# ═══════════════════════════════════════════════════════════════════════
+# INTÉGRATIONS EXTERNES (OPTIONAL)
+# ═══════════════════════════════════════════════════════════════════════
+lettre = { version = "0.11", features = ["tokio1-native-tls"], optional = true } # Envoi d'emails
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], optional = true } # Client HTTP
+webhook = { version = "2.1", optional = true }                 # Webhooks sortants
+
+[dev-dependencies]
+# ═══════════════════════════════════════════════════════════════════════
+# DÉPENDANCES DE TEST ET DÉVELOPPEMENT
+# ═══════════════════════════════════════════════════════════════════════
+tokio-test = "0.4"              # Utilitaires de test async
+mockall = "0.12"                # Mocking
+proptest = "1.4"                # Property testing
+criterion = { version = "0.5", features = ["html_reports"] } # Benchmarks
+insta = "1.34"                  # Tests de snapshot
+test-log = "0.2"                # Logging dans les tests
+pretty_assertions = "1.4"       # Assertions plus lisibles
+
+[features]
+# Fonctionnalités par défaut
+default = [
+    "redis-cache",
+    "file-uploads", 
+    "webhooks",
+    "metrics",
+    "email"
+]
+
+# Cache Redis (désactivable pour dev/test)
+redis-cache = ["dep:redis"]
+
+# Upload de fichiers avec validation
+file-uploads = ["dep:image", "dep:infer", "dep:tempfile", "dep:zip"]
+
+# Support des webhooks sortants  
+webhooks = ["dep:reqwest", "dep:webhook"]
+
+# Métriques et monitoring
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
+
+# Envoi d'emails
+email = ["dep:lettre"]
+
+# Mode de développement avec fonctionnalités de debug
+dev = ["tokio/test-util"]
+
+# Version sans dépendances optionnelles (pour déploiements légers)
+minimal = []
+
+[profile.dev]
+# Configuration pour le développement
+opt-level = 0      # Pas d'optimisation pour compilation rapide
+debug = true       # Symboles de debug complets
+split-debuginfo = "unpacked"  # Debug info séparé (macOS/Linux)
+overflow-checks = true        # Vérifications d'overflow
+lto = false                   # Pas de LTO pour compilation rapide
+
+[profile.release]
+# Configuration pour la production
+opt-level = 3      # Optimisation maximale
+debug = false      # Pas de symboles de debug
+strip = true       # Supprimer les symboles
+lto = "fat"        # Link Time Optimization complète
+codegen-units = 1  # Compilation en une seule unité pour optimisation
+panic = "abort"    # Abort au lieu d'unwind pour performance
+
+[profile.bench]
+# Configuration pour les benchmarks
+inherits = "release"
+debug = true       # Conserver debug pour profiling
+
+# ═══════════════════════════════════════════════════════════════════════
+# MÉTADONNÉES CARGO
+# ═══════════════════════════════════════════════════════════════════════
+
+[package.metadata.docs.rs]
+# Configuration pour docs.rs
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Badges pour crates.io
+[badges]
+maintenance = { status = "actively-developed" }
+
+# Scripts personnalisés
+[package.metadata.scripts]
+# cargo run-script db-setup
+db-setup = "sqlx database create && sqlx migrate run"
+# cargo run-script test-all  
+test-all = "cargo test --all-features --all-targets"
+# cargo run-script security-audit
+security-audit = "cargo audit"
 

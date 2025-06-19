@@ -1,8 +1,10 @@
 //file: backend/modules/chat_server/src/hub/room.rs
 
-use sqlx::{query, query_as, FromRow};
+use sqlx::{query, query_as, FromRow, Row};
 use serde::Serialize;
 use crate::hub::common::ChatHub;
+use crate::validation::{validate_room_name, validate_message_content, validate_limit};
+use crate::error::{ChatError, Result};
 use serde_json::json;
 use chrono::NaiveDateTime;
 
@@ -15,8 +17,11 @@ pub struct RoomMessage {
     pub room: Option<String>,
 }
 
-pub async fn join_room(hub: &ChatHub, room: &str, user_id: i32) {
+pub async fn join_room(hub: &ChatHub, room: &str, user_id: i32) -> Result<()> {
     tracing::debug!(user_id = %user_id, room = %room, "🔧 Début de join_room");
+    
+    // Validation du nom du salon
+    validate_room_name(room)?;
     
     let mut rooms = hub.rooms.write().await;
     tracing::debug!(user_id = %user_id, room = %room, "🔐 Lock d'écriture sur rooms obtenu");
@@ -32,6 +37,7 @@ pub async fn join_room(hub: &ChatHub, room: &str, user_id: i32) {
     }
 
     tracing::info!(room = %room, user_id = %user_id, total_members = %entry.len(), "👥 Rejoint la room");
+    Ok(())
 }
 
 pub async fn broadcast_to_room(
@@ -40,28 +46,39 @@ pub async fn broadcast_to_room(
     username: &str,
     room: &str,
     msg: &str
-) {
+) -> Result<()> {
     tracing::debug!(user_id = %user_id, room = %room, content_length = %msg.len(), "🔧 Début broadcast_to_room");
+    
+    // Validation des entrées
+    validate_room_name(room)?;
+    validate_message_content(msg, hub.config.limits.max_message_length)?;
+    
+    // Vérification du rate limiting
+    if !hub.check_rate_limit(user_id).await {
+        tracing::warn!(user_id = %user_id, room = %room, "🚫 Rate limit dépassé");
+        return Err(ChatError::rate_limit_exceeded_simple("rate_limit"));
+    }
     
     // Insertion en base de données
     tracing::debug!(user_id = %user_id, room = %room, "💾 Insertion du message en base de données");
-    let rec = match query!(
-        "INSERT INTO messages (from_user, room, content) VALUES ($1, $2, $3) RETURNING id, CURRENT_TIMESTAMP as timestamp",
-        user_id,
-        room,
-        msg
-    )
-    .fetch_one(&hub.db)
-    .await {
-        Ok(rec) => {
-            tracing::debug!(user_id = %user_id, room = %room, message_id = %rec.id, "✅ Message inséré en base avec succès");
-            rec
-        }
-        Err(e) => {
+    let row = query("INSERT INTO messages (from_user, room, content) VALUES ($1, $2, $3) RETURNING id, CURRENT_TIMESTAMP as timestamp")
+        .bind(user_id)
+        .bind(room)
+        .bind(msg)
+        .fetch_one(&hub.db)
+        .await
+        .map_err(|e| {
             tracing::error!(user_id = %user_id, room = %room, error = %e, "❌ Erreur insertion message en base");
-            return;
-        }
-    };
+            ChatError::from_sqlx_error("database_operation", e)
+        })?;
+
+    let message_id: i32 = row.get("id");
+    let timestamp: chrono::DateTime<chrono::Utc> = row.get("timestamp");
+
+    tracing::debug!(user_id = %user_id, room = %room, message_id = %message_id, "✅ Message inséré en base avec succès");
+
+    // Incrémentation des statistiques
+    hub.increment_message_count().await;
 
     let clients = hub.clients.read().await;
     let rooms = hub.rooms.read().await;
@@ -71,11 +88,11 @@ pub async fn broadcast_to_room(
     let payload = json!({
         "type": "message",
         "data": {
-            "id": rec.id,
+            "id": message_id,
             "fromUser": user_id,
             "username": username,
             "content": msg,
-            "timestamp": rec.timestamp,
+            "timestamp": timestamp,
             "room": room
         }
     });
@@ -103,62 +120,59 @@ pub async fn broadcast_to_room(
             }
         }
         
-        tracing::info!(user_id = %user_id, room = %room, message_id = %rec.id, successful_sends = %successful_sends, failed_sends = %failed_sends, "📨 Message room enregistré et diffusé");
+        tracing::info!(user_id = %user_id, room = %room, message_id = %message_id, successful_sends = %successful_sends, failed_sends = %failed_sends, "📨 Message room enregistré et diffusé");
     } else {
         tracing::warn!(user_id = %user_id, room = %room, "❌ Salon non trouvé dans la liste des salons actifs");
     }
+
+    Ok(())
 }
 
-
-pub async fn fetch_room_history(hub: &ChatHub, room: &str, limit: i64) -> Vec<RoomMessage> {
+pub async fn fetch_room_history(hub: &ChatHub, room: &str, limit: i64) -> Result<Vec<RoomMessage>> {
     tracing::debug!(room = %room, limit = %limit, "🔧 Début fetch_room_history");
     
-    match query_as!(
-        RoomMessage,
-        r#"
+    // Validation des paramètres
+    validate_room_name(room)?;
+    let validated_limit = validate_limit(limit)?;
+    
+    let messages = query_as::<_, RoomMessage>("
         SELECT m.id, u.username, m.content, m.timestamp, m.room
         FROM messages m
         JOIN users u ON u.id = m.from_user
         WHERE m.room = $1
         ORDER BY m.timestamp ASC
         LIMIT $2
-        "#,
-        room,
-        limit
-    )
+    ")
+    .bind(room)
+    .bind(validated_limit)
     .fetch_all(&hub.db)
-    .await {
-        Ok(messages) => {
-            tracing::debug!(room = %room, message_count = %messages.len(), limit = %limit, "✅ Historique salon récupéré avec succès");
-            messages
-        }
-        Err(e) => {
-            tracing::error!(room = %room, limit = %limit, error = %e, "❌ Erreur lors de la récupération de l'historique du salon");
-            Vec::new()
-        }
-    }
+    .await
+    .map_err(|e| {
+        tracing::error!(room = %room, limit = %validated_limit, error = %e, "❌ Erreur lors de la récupération de l'historique du salon");
+        ChatError::from_sqlx_error("database_operation", e)
+    })?;
+
+    tracing::debug!(room = %room, message_count = %messages.len(), limit = %validated_limit, "✅ Historique salon récupéré avec succès");
+    Ok(messages)
 }
 
-pub async fn room_exists(hub: &ChatHub, room: &str) -> bool {
+pub async fn room_exists(hub: &ChatHub, room: &str) -> Result<bool> {
     tracing::debug!(room = %room, "🔧 Vérification existence salon");
     
-    match sqlx::query_scalar!(
-        "SELECT EXISTS(SELECT 1 FROM rooms WHERE name = $1)",
-        room
-    )
-    .fetch_one(&hub.db)
-    .await {
-        Ok(Some(exists)) => {
-            tracing::debug!(room = %room, exists = %exists, "✅ Vérification existence salon terminée");
-            exists
-        }
-        Ok(None) => {
-            tracing::warn!(room = %room, "⚠️ Résultat NULL pour l'existence du salon");
-            false
-        }
-        Err(e) => {
+    // Validation du nom du salon
+    validate_room_name(room)?;
+    
+    let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM rooms WHERE name = $1)")
+        .bind(room)
+        .fetch_one(&hub.db)
+        .await
+        .map_err(|e| {
             tracing::error!(room = %room, error = %e, "❌ Erreur lors de la vérification de l'existence du salon");
-            false
-        }
-    }
+            ChatError::from_sqlx_error("database_operation", e)
+        })?;
+
+    let exists: bool = row.get(0);
+
+    tracing::debug!(room = %room, exists = %exists, "✅ Vérification existence salon terminée");
+    Ok(exists)
 }
